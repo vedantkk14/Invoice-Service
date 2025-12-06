@@ -1,63 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Invoice QC Web App</title>
-    <style>
-        body { font-family: Arial; margin: 40px; }
-        .container { max-width: 800px; margin: auto; }
-        .invoice-box { padding: 15px; border: 1px solid #ddd; margin-top: 20px; }
-        .valid { color: green; font-weight: bold; }
-        .invalid { color: red; font-weight: bold; }
-        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice QC Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
     <div class="container">
-        <h2>Invoice Extraction & QC</h2>
+        <header>
+            <h2>Invoice Extraction & QC</h2>
+            <p>Upload your PDF invoices for automated extraction and validation.</p>
+        </header>
 
         <form method="POST" enctype="multipart/form-data" action="/upload">
-            <label>Select PDF Invoices:</label><br><br>
-            <input type="file" name="pdfs" multiple required>
-            <br><br>
-            <button type="submit">Upload & Validate</button>
+            <div class="upload-card">
+                <label style="font-weight: 600; display: block; margin-bottom: 10px;">Select PDF Invoices</label>
+                <input type="file" name="pdfs" multiple required>
+                <button type="submit" class="btn btn-primary">Upload & Validate</button>
+            </div>
         </form>
 
-        {% if extracted %}
-            <h3>Extracted Invoices</h3>
-
-            {% for inv in extracted %}
-            <div class="invoice-box">
-                <h4>File: {{ inv.source_file }}</h4>
-                <pre>{{ inv | tojson(indent=2) }}</pre>
-            </div>
-            {% endfor %}
-        {% endif %}
-
         {% if validation %}
-            <h3>Validation Results</h3>
+            <div class="dashboard-header">
+                <h3 class="section-title">Validation Dashboard</h3>
+                <a href="/" class="btn btn-outline">↺ Clear Results</a>
+            </div>
 
-            <p><strong>Total:</strong> {{ validation.summary.total_invoices }}</p>
-            <p><strong>Valid:</strong> {{ validation.summary.valid_invoices }}</p>
-            <p><strong>Invalid:</strong> {{ validation.summary.invalid_invoices }}</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h5>Total Invoices</h5>
+                    <p>{{ validation.summary.total_invoices }}</p>
+                </div>
+                <div class="stat-card valid">
+                    <h5>Valid</h5>
+                    <p>{{ validation.summary.valid_invoices }}</p>
+                </div>
+                <div class="stat-card invalid">
+                    <h5>Invalid</h5>
+                    <p>{{ validation.summary.invalid_invoices }}</p>
+                </div>
+            </div>
 
             {% for res in validation.results %}
-            <div class="invoice-box">
-                <h4>Invoice ID: {{ res.invoice_id }}</h4>
-                {% if res.is_valid %}
-                    <p class="valid">Valid Invoice ✔</p>
-                {% else %}
-                    <p class="invalid">Invalid Invoice ✘</p>
-                    <strong>Errors:</strong>
-                    <ul>
+            <div class="invoice-card" style="border-left: 5px solid {% if res.is_valid %}var(--success){% else %}var(--danger){% endif %};">
+                <div class="card-header">
+                    <h4>Invoice ID: {{ res.invoice_id }}</h4>
+                    {% if res.is_valid %}
+                        <span class="badge badge-success">Valid Invoice ✔</span>
+                    {% else %}
+                        <span class="badge badge-danger">Invalid Invoice ✘</span>
+                    {% endif %}
+                </div>
+                
+                {% if not res.is_valid %}
+                <div class="card-body">
+                    <strong>Validation Errors:</strong>
+                    <ul class="error-list">
                         {% for e in res.errors %}
                             <li>{{ e }}</li>
                         {% endfor %}
                     </ul>
+                </div>
                 {% endif %}
             </div>
             {% endfor %}
         {% endif %}
+
+        {% if extracted %}
+            <div class="dashboard-header" style="margin-top: 50px;">
+                <h3 class="section-title">Raw Extraction Data</h3>
+            </div>
+            {% for inv in extracted %}
+            <div class="invoice-card">
+                <div class="card-header">
+                    <h4>File: {{ inv.source_file }}</h4>
+                </div>
+                <div class="card-body" style="background: #282c34; padding: 0;">
+                    <pre>{{ inv | tojson(indent=2) }}</pre>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
     </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
