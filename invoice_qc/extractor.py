@@ -1,4 +1,3 @@
-# invoice_qc/extractor.py
 import os
 import re
 from typing import List, Dict, Any, Optional
@@ -25,8 +24,6 @@ def detect_language(text: str) -> str:
     except LangDetectException:
         return "en"
 
-
-# Regex patterns per field per language (simplified demo)
 PATTERNS: Dict[str, Dict[str, List[str]]] = {
     "invoice_number": {
         "de": [
@@ -82,7 +79,6 @@ def _search_patterns(field: str, lang: str, text: str) -> Optional[str]:
     for pattern in candidates:
         m = re.search(pattern, text, flags=re.IGNORECASE)
         if m:
-            # Return last non-empty group
             groups = [g for g in m.groups() if g]
             if groups:
                 return groups[-1].strip()
@@ -95,8 +91,7 @@ def _extract_totals(text: str) -> Dict[str, Optional[float]]:
     tax_amount = None
     gross_total = None
 
-    # Very simple heuristics based on keywords
-    # Gesamtwert EUR
+
     m_net = re.search(
         r"Gesamtwert\s+EUR\s*([\d\.,]+)", text, flags=re.IGNORECASE
     ) or re.search(
@@ -105,7 +100,6 @@ def _extract_totals(text: str) -> Dict[str, Optional[float]]:
     if m_net:
         net_total = parse_number(m_net.group(1))
 
-    # MwSt. 19,00% EUR 12,16
     m_tax = re.search(
         r"MwSt\.?\s*([\d\.,]+)\s*%.*?([\d\.,]+)",
         text,
@@ -142,7 +136,6 @@ def _extract_parties(text: str) -> Dict[str, Optional[str]]:
     buyer_name = None
     buyer_address = None
 
-    # Example heuristic: extract after "Kundenanschrift" as buyer block
     m_buyer = re.search(
         r"Kundenanschrift(.*?)(?:Unsere Kundennummer|Seite\s+\d+)",
         text,
@@ -155,7 +148,6 @@ def _extract_parties(text: str) -> Dict[str, Optional[str]]:
             buyer_name = lines[0]
             buyer_address = ", ".join(lines[1:]) if len(lines) > 1 else None
 
-    # Example heuristic: seller block appears repeatedly as company footer
     m_seller = re.search(
         r"(Beispielname.*?)(?:Ihre Faxnummer|Seite\s+\d+)",
         text,
@@ -206,15 +198,12 @@ def _extract_line_items(text: str) -> List[LineItem]:
     table_text = table_match.group(1)
     lines = [l.strip() for l in table_text.splitlines() if l.strip()]
 
-    # This is invoice-specific; we'll assume a single line like:
-    # "1 4 VE 1 VE=20 Stück 64,00 pro 1 VE"
-    # plus description somewhere near "Sterilisationsmittel"
+
     description_match = re.search(
         r"Sterilisationsmittel", text, flags=re.IGNORECASE
     )
     description = "Sterilisationsmittel" if description_match else None
 
-    # Try to find a line starting with a number (position)
     for line in lines:
         if re.match(r"^\d+\s", line):
             parts = line.split()
@@ -223,14 +212,12 @@ def _extract_line_items(text: str) -> List[LineItem]:
             except ValueError:
                 position = None
 
-            # Very rough heuristics
             quantity = None
             unit = None
             unit_conversion = None
             unit_price = None
             line_total = None
 
-            # Quantity + unit: "4 VE"
             qty_unit_match = re.search(r"(\d+[,\.]?\d*)\s*([A-Za-z]+)", line)
             if qty_unit_match:
                 quantity = parse_number(qty_unit_match.group(1))
@@ -246,7 +233,6 @@ def _extract_line_items(text: str) -> List[LineItem]:
             if price_match:
                 unit_price = parse_number(price_match.group(1))
 
-            # Bestellwert could be on another line; we'll leave line_total None for now
 
             items.append(
                 LineItem(
